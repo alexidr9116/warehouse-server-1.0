@@ -1,0 +1,50 @@
+{
+    "name": "mini-vendor-server",
+    "version": "1.0.0",
+    "description": "Mini Vendor Service Server",
+    "main": "server.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "nodemon server.js"
+    },
+    "devDependencies": {
+        "nodemon": "^2.0.15"
+    },
+    "dependencies": {
+        "axios": "^0.26.0",
+        "bcryptjs": "^2.4.3",
+        "body-parser": "^1.19.1",
+        "concurrently": "^6.5.1",
+        "cors": "^2.8.5",
+        "crypto-js": "^4.1.1",
+        "dotenv": "^10.0.0",
+        "express": "^4.17.3",
+        "express-validator": "^6.14.0",
+        "form-data": "^4.0.0",
+        "is-empty": "^1.2.0",
+        "jsonwebtoken": "^8.5.1",
+        "moment": "^2.29.1",
+        "mongoose": "^6.1.4",
+        "multer": "^1.4.4",
+        "otp-generator": "^4.0.0",
+        "passport": "^0.5.2",
+        "passport-jwt": "^4.0.0",
+        "path": "^0.12.7",
+        "pusher": "^5.0.1",
+        "request": "^2.88.2",
+        "socket.io": "^4.4.1",
+        "validator": "^13.7.0",
+        "web-vitals": "^2.1.2"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/alexidr9116/iotservices.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/alexidr9116/iotservices.git/issues"
+    },
+    "homepage": "https://github.com/alexidr9116/iotservices.git#readme"
+}
