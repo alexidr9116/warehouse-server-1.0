@@ -24,6 +24,7 @@ let ProductHistorySchema = new Schema({
         type:String,
         default:"", // position, pay, sms
     },
+    
     result:{
         type:String,
         default:"", // success, failed

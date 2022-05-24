@@ -10,14 +10,32 @@ router.get(
     auth,
     ProductController.gets
 )  
+router.post(
+    '/set-delivery-type',
+    auth,
+    ProductController.setDeliveryType
+);
+router.get(
+    '/delivery-list/:mobile',
+    auth,
+    ProductController.getsOfDelivery
+)  
+router.post(
+    '/get-by-barcode',
+    auth,
+    ProductController.getProductByBarcode
+)  
 
 router.post(
-    '/buy',
-    ProductController.buy
+    '/pay',
+    auth,
+    ProductController.pay
+)
+router.post(
+    '/pay-with-bank',
+    auth,
+    ProductController.payWithBank,
 )
 
-router.post(
-    '/take',
-    ProductController.take
-)
+
 module.exports = router;

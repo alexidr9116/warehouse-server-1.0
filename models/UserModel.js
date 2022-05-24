@@ -54,6 +54,15 @@ const UserSchema = new Schema({
         type: String,
         default: ""
     },
+    chStaff:{
+        type:String,
+        
+        // default:new mongoose.Types.ObjectId().toString(),
+    },
+    mnStaff:{
+        type:String,
+        // default:new mongoose.Types.ObjectId().toString(),
+    },
     email:{
         type:String,
         default:"",
@@ -70,8 +79,8 @@ const UserSchema = new Schema({
     country: {
         type: Object,
         default: {
-            code: { type: String, default: "" },
-            value: { type: String, default: "" },
+            code: "",
+            value: "",
         }
     },
     firstName:{
@@ -97,6 +106,15 @@ const UserSchema = new Schema({
     payPassphrase:{
         type:String,
         default:""
+    },
+    bank:{
+        type:Object,
+        default:{
+            accountName:"",
+            accountNumber:0,
+            qr:"",
+        }
+
     }
 
 });

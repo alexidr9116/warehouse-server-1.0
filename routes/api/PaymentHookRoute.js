@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const PayHistory  = require('../../models/PayHistoryModel');
+const PayHistory = require('../../models/PayHistoryModel');
 
 const ResponseData = require("../../utils/ResponseData");
 const auth = require("../../middleware/auth");
@@ -9,26 +9,39 @@ const { sendPassword } = require("../../utils/Channel");
 const ProductModel = require("../../models/ProductModel");
 
 router.get(
-    '/qpay/:invoice/:productId',
-    async(req, res) => {
+    '/qpay/:invoice/:warehouseId',
+    async (req, res) => {
         console.log(req.params, " is payment hook");
         try {
-
-            const { invoice, productId } = req.params;
+            const { invoice, warehouseId } = req.params;
             // change log status to paid
-            await PayHistory.findOneAndUpdate(
-                {
-                    invoice, productId
-                },
-                {
-                    status:"paid",
-                    updated:Date.now(),
-                }
-            )
- 
-            // await ProductModel.findByIdAndUpdate(productId,{status:0});
+            const history =
+                await PayHistory.findOne(
+                    {
+                        invoice, warehouseId
+                    }
+                );
+            history.status = "paid";
+            history.payMethods = "qpay";
+            history.updated = Date.now();
+            await history.save();
 
-            console.log("Did result hook successful")
+            await ProductModel.updateMany({ _id: { $in: history.productIds } }, { payStatus: "paid", payMethods: "qpay" });
+
+
+            const notification = new NotificationModel();
+            notification.sender = history.payer;
+            notification.receiver = history.receiver;
+            notification.content = `Hi, there!, I have paid with qpay for ${history.products.length} counts production includes ${history.products[0].barcode}, you can check invoice  ${history.realInvoice} `;
+            notification.addition = "";
+            notification.productIds = history.productIds;
+            notification.products = history.products;
+
+            notification.type = "payment";
+            await notification.save();
+
+
+            console.log("QPayment system was successfully done")
         } catch (err) {
             console.log(err, " is payment hook  error");
         }
@@ -36,7 +49,7 @@ router.get(
     }
 )
 
-router.post('/result', auth, async(req, res) => {
+router.post('/result', auth, async (req, res) => {
 
     const { invoice } = req.body;
     const sender = req.user._id;

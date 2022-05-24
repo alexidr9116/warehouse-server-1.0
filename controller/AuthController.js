@@ -71,16 +71,19 @@ const ResponseUserModel = (user) => {
         role: user.role,
         expired: user.expired,
         licenseKey: user.licenseKey,
-        firstName:user.firstName,
-        lastName:user.lastName,
-        address:user.address,
-        email:user.email,
-        invoiceAlias:user.invoiceAlias,
-        payUsername:user.payUsername,
-        payPassword:(user.payPassword && user.payPassword!=""? decryptWithAES(user.payPassword,user.payPassphrase):"") ,
-        payPassphrase:user.payPassphrase,
-        fullName:`${user.firstName} ${user.lastName}`,
-        _id:user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        address: user.address,
+        email: user.email,
+        invoiceAlias: user.invoiceAlias,
+        payUsername: user.payUsername,
+        payPassword: (user.payPassword && user.payPassword != "" ? decryptWithAES(user.payPassword, user.payPassphrase) : ""),
+        payPassphrase: user.payPassphrase,
+        fullName: `${user.firstName} ${user.lastName}`,
+        _id: user._id,
+        chStaff:user.chStaff,
+        mnStaff:user.mnStaff,
+        bank: user.bank,
     }
 }
 
@@ -92,45 +95,91 @@ const login = async (req, res) => {
 
     try {
         const mobile = req.body.mobile;
-        const exist = await User.isMobileExists(mobile);
-        if (!exist) {
-            otps[mobile] = otpGenerator.generate(6, { upperCaseAlphabets: false, specialChars: false });
-            // opt send
-            const result = await sendOtp(mobile, otps[mobile]);
-            console.log(otps[mobile]);
-            if (result != null)
-                return ResponseData.ok(res, "Sent OTP, please verify",{step:'otp'});
-            else {
-                return ResponseData.ok(res, "Didn't send OTP, please check your mobile number again",{step:'login'});
+
+        let _user = await User.findOne({ chStaff: mobile });
+
+        if (_user != null) {
+            try {
+                const payload = {
+                    id: _user._id,
+                    mobile: _user.mobile,
+                    role: "chStaff",
+                };
+
+                const token = jwtsign(payload);
+                const _responseUser = ResponseUserModel(_user);
+                _responseUser.role = "chStaff";
+                return ResponseData.ok(res, "Empty Password, verified successful", { token, user: _responseUser, step: 'navigate' });
+            } catch (e) {
+                console.log(e); // caught
+                return ResponseData.error(res, "Internal Server Error");
             }
         }
         else {
-            const user = await User.findOne({mobile});
-            const isPassword = (user.password && user.password != "");
-            if (isPassword) {
-                return ResponseData.ok(res, "Check Password", { passwordVerify: isPassword,step:'password' });
+            _user = await User.findOne({ mnStaff: mobile });
+            if (_user != null) {
+                try {
+                    const payload = {
+                        id: _user._id,
+                        mobile: _user.mobile,
+                        role: "mnStaff",
+                    };
 
+                    const token = jwtsign(payload);
+                    const _responseUser = ResponseUserModel(_user);
+                    _responseUser.role = "mnStaff";
+                    return ResponseData.ok(res, "Empty Password, verified successful", { token, user: _responseUser, step: 'navigate' });
+                } catch (e) {
+                    console.log(e); // caught
+                    return ResponseData.error(res, "Internal Server Error");
+
+                }
             }
             else {
-                User.findOne({ mobile }).then(async (user) => {
-                    try {
-                        const payload = {
-                            id: user._id,
-                            mobile: user.mobile,
-                        };
-            
-                        const token = jwtsign(payload);
-                        return ResponseData.ok(res,"Empty Password, verified successful",{token,user:ResponseUserModel(user),step:'navigate'}); 
-                    } catch (e) {
-                        console.log(e); // caught
+                const exist = await User.isMobileExists(mobile);
+                if (!exist) {
+                    otps[mobile] = otpGenerator.generate(6, { upperCaseAlphabets: false, specialChars: false });
+                    // opt send
+                    const result = await sendOtp(mobile, otps[mobile]);
+                    console.log(otps[mobile]);
+                    if (result != null)
+                        return ResponseData.ok(res, "Sent OTP, please verify", { step: 'otp' });
+                    else {
+                        return ResponseData.ok(res, "Didn't send OTP, please check your mobile number again", { step: 'login' });
                     }
-                })
-               
+                }
+                else {
+                    const user = await User.findOne({ mobile });
+                    const isPassword = (user.password && user.password != "");
+                    if (isPassword) {
+                        return ResponseData.ok(res, "Check Password", { passwordVerify: isPassword, step: 'password' });
+
+                    }
+                    else {
+                        User.findOne({ mobile }).then(async (user) => {
+                            try {
+                                const payload = {
+                                    id: user._id,
+                                    mobile: user.mobile,
+                                    role: user.role,
+                                };
+
+                                const token = jwtsign(payload);
+                                return ResponseData.ok(res, "Empty Password, verified successful", { token, user: ResponseUserModel(user), step: 'navigate' });
+                            } catch (e) {
+                                console.log(e); // caught
+                                return ResponseData.error(res, "Internal Server Error");
+                            }
+                        })
+
+                    }
+                }
             }
         }
     }
     catch (err) {
         console.log(err);
+        return ResponseData.error(res, "Internal Server Error");
     }
 }
 
@@ -144,16 +193,17 @@ const verifyPassword = async (req, res) => {
     User.findOne({ mobile }).then(async (user) => {
         try {
             if (!await checkPassword(password, user.password)) {
-                return ResponseData.error(res,"Wrong password, check again",{success:false});
+                return ResponseData.error(res, "Wrong password, check again", { success: false });
             }
             const payload = {
                 id: user._id,
                 mobile: user.mobile,
+                role: user.role,
             };
             const token = jwtsign(payload);
             const status = user.status;
-            
-            return ResponseData.ok(res,"Password verified successful",{token,user:ResponseUserModel(user)}); 
+
+            return ResponseData.ok(res, "Password verified successful", { token, user: ResponseUserModel(user) });
         } catch (e) {
             console.log(e); // caught
         }
@@ -166,17 +216,17 @@ const verifyOtp = async (req, res) => {
     if (!validResult.isEmpty) {
         return ResponseData.error(res, validResult.array()[0].msg);
     }
-    const { mobile, otp } = req.body; 
+    const { mobile, otp } = req.body;
     try {
         if (otps[mobile] && `${otps[mobile]}` == otp) {
-            return ResponseData.ok(res,"OTP verified success, please set your password",{success:true});
+            return ResponseData.ok(res, "OTP verified success, please set your password", { success: true });
         } else {
-          
-            return ResponseData.ok(res,`${otp} is wrong`,{success:false});
+
+            return ResponseData.ok(res, `${otp} is wrong`, { success: false });
         }
     } catch (err) {
         console.log(err)
-        return ResponseData.error(res,`${err}`); 
+        return ResponseData.error(res, `${err}`);
     }
 }
 
@@ -188,15 +238,16 @@ const register = async (req, res) => {
     try {
         const { mobile, password } = req.body;
         if (await User.isMobileExists(mobile)) {
-            ResponseData.error(res,`${mobile} - phone number is already exist`);
+            ResponseData.error(res, `${mobile} - phone number is already exist`);
         }
         const newUser = new User({
             mobile,
-            password: (password? encryptPassword(password) :""),
+            password: (password ? encryptPassword(password) : ""),
             role: (ADMIN_PHONE_NUMBER == mobile ? "admin" : "user"),
+            
         });
         await newUser.save();
-        const payload = { id: newUser._id, mobile: newUser.mobile };
+        const payload = { id: newUser._id, mobile: newUser.mobile, role:newUser.role };
         const token = jwtsign(payload);
         return ResponseData.ok(res, "Registered successful", { token, success: true, user: ResponseUserModel(newUser) });
 
@@ -216,5 +267,5 @@ module.exports = {
     ResponseUserModel,
     checkPassword,
     encryptPassword,
-    
+
 }

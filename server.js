@@ -12,6 +12,7 @@ const authRoute = require("./routes/api/Auth");
 const reviewRoute = require("./routes/api/Review"); 
 const warehouseRoute = require("./routes/api/Warehouse"); 
 const productRoute = require("./routes/api/Products"); 
+const notificationRoute = require('./routes/api/Notification');
 const paymentRoute = require('./routes/api/Payment');
 const paymentHookRoute = require('./routes/api/PaymentHookRoute');
 const app = express();
@@ -53,12 +54,13 @@ app.use("/api/warehouse/admin/", adminRoute);
 app.use("/api/warehouse/warehouse/", warehouseRoute); 
 app.use("/api/warehouse/review/", reviewRoute); 
 app.use("/api/warehouse/product/", productRoute); 
+app.use("/api/warehouse/notification/", notificationRoute); 
 app.use("/api/warehouse/payment/", paymentRoute); 
 app.use("/api/warehouse/hook/payment/", paymentHookRoute); 
 app.use("/uploads", express.static('uploads'));
-
 app.use(express.static(assetFolder));
-app.use("*", express.static(assetFolder))
+app.use("*", express.static(assetFolder));
+
 const port = process.env.PORT || 5500; // process.env.port is Heroku's port if you choose to deploy the app there
 const server = app.listen(port, () => {
     console.log(`Server up and running on port ${port} !`)

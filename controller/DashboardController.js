@@ -1,13 +1,21 @@
-const Vendor = require('../models/VendModel');
+const Warehouse = require('../models/WarehouseModel');
 const Products = require('../models/ProductModel');
 const PayHistory = require('../models/PayHistoryModel');
 const ResponseData = require('../utils/ResponseData');
-const getSystemVendorDetails = async (req, res) => {
+const Users = require('../models/UserModel');
+const getSystemInformation = async (req, res) => {
     try {
-        const allVendors = await Vendor.find({}, { _id: 0, status: -1, title: -1, vendorId: -1, owner:-1 });
-        const allProducts = await Products.find({}, { _id: 0, status: -1, price: -1});
-        const allPayHistory = await PayHistory.find({status:"paid"},{_id:0,invoice:-1, created:-1, cost:-1, receiver:-1, payer:-1,realInvoice:-1 });
-        return ResponseData.ok(res, "", { allVendors, allProducts,allPayHistory });
+        const warehouse = await Warehouse.findOne({owner:req.user._id});
+        
+        const allWarehouse = await Warehouse.find({}, { _id: 0, status: -1, name: -1, owner:-1 });
+        const $where1 = (warehouse!=null ? ({position:{$ne:"completed"},warehouseId:warehouse._id}):{position:{$ne:"completed"}});
+        
+        const allProducts = await Products.find($where1, { _id: 0, price: -1, position:-1});
+
+        const allPayHistory = await PayHistory.find({status:"paid"},{_id:-1,invoice:-1, created:-1, totalCost:-1, receiver:-1, payer:-1,realInvoice:-1, payMethods:-1 }).sort({created:'desc'});
+
+        const allUsers = await Users.find({},{_id:0,status:-1});
+        return ResponseData.ok(res, "", { allWarehouse, allProducts,allPayHistory,allUsers });
     }
     catch (err) {
         console.log(err);
@@ -31,7 +39,7 @@ const getSentChartDetails = async (req, res) => {
             {
                 $group: {
                     _id: { $dateToString: { format: '%Y-%m', date: "$tsToDate" } },
-                    total: { $sum: "$cost" },
+                    total: { $sum: "$totalCost" },
                 }
             },
             {
@@ -65,7 +73,7 @@ const getReceiveChartDetails = async (req, res) => {
             {
                 $group: {
                     _id: { $dateToString: { format: '%Y-%m', date: "$tsToDate" } },
-                    total: { $sum: "$cost" },
+                    total: { $sum: "$totalCost" },
                 }
             },
             {
@@ -73,7 +81,7 @@ const getReceiveChartDetails = async (req, res) => {
             }
         ]
         );
-       
+        
         return ResponseData.ok(res, "", { months});
     }
     catch (err) {
@@ -81,20 +89,10 @@ const getReceiveChartDetails = async (req, res) => {
         return ResponseData.error(res, "Can not fetch", {});
     }
 }
-const getInvoiceList = async(req,res)=>
-{
-    try{
-        const list = await PayHistory.find({receiver:(req.user._id)}).sort({created:"desc"});
-        return ResponseData.ok(res, "", { list});
-    }
-    catch (err) {
-        console.log(err);
-        return ResponseData.error(res, "Can not fetch", {});
-    }
-}
+
 module.exports = {
-    getSystemVendorDetails,
+    getSystemInformation,
     getSentChartDetails,    
     getReceiveChartDetails,
-    getInvoiceList,
+ 
 }

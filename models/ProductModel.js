@@ -10,24 +10,27 @@ let ProductSchema = new Schema({
         type: String,
         max: 100
     },
+    priceY:{
+        type:Number,
+    },
     price: {
         type: Number,
-        required: true
+        // required: true
     },
     mobile:{
         type:Number,
-        required:true,
+        // required:true,
     },
     
     weight:{
         type:Number,
-        required:true,
+        // required:true,
     },
     comment:{
         type:String,
     },
     size:{
-        type:String,
+        type:Number,
     },
     type:{
         type:String,
@@ -43,9 +46,9 @@ let ProductSchema = new Schema({
         type:String,
         default:"unpaid",
     },
-    payLocation:{
+    payMethods:{
         type:String,
-        default:"",
+        default:"manually",     // manually, qpay
     },
 
     chinaSms:{
@@ -60,13 +63,27 @@ let ProductSchema = new Schema({
         type:Number,
         default:Date.now(),
     },
+    
+    leftAt:{
+        type:Number,
+    },
     arrivedUbAt:{
         type:Number,
     },
     arrivedUser:{
         type:Number,
     },
-
+    deliveryCost:{
+        type:Number,
+        default:0,
+    },
+    deliveryType:{
+        type:String,
+        default:"",
+    },
+    totalCost:{
+        type:Number,
+    }
 });
 
 // Export the model

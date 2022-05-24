@@ -10,5 +10,8 @@ router.get(
     auth,
     WarehouseController.getSelf
 )
-  
+router.get(
+    '/rank',
+    WarehouseController.getWarehousesByRanking
+)  
 module.exports = router;

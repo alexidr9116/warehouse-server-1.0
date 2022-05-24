@@ -59,8 +59,22 @@ const WarehouseSchema = new Schema({
         type:Boolean,
         default:true
     },
+    payMethods:{
+        type:String,
+        default:"any",
+    },
+    
     price:{
-        type:Number,
+        type:Number,    // Kg 
+    },
+    priceY:{
+        type:Number,    // Yen
+    },
+    price1:{
+        type:Number,    // M3
+    },
+    price1Y:{
+        type:Number,    // China
     },
     period:{
         type:Number,
@@ -81,7 +95,22 @@ const WarehouseSchema = new Schema({
     description:{
         type:String,
         default:""
-    }
+    },
+    deliveryCost1:{
+        type:Number,
+        default:10         // 10%
+    },
+    deliveryCost2:{
+        type:Number,
+        default:40000,         // box
+    },
+    deliveryCost3:{
+        type:Number,
+        default:0           // personal 
+    },
+    increaseRate:[0,10,1000,1000],
+    increaseIndex:{type:Number, default:0}
+
 });
 
 // Export the model

@@ -1,29 +1,28 @@
 const axios = require('axios');
+const ObjectId = require('mongoose').Types.ObjectId;
 const FormData = require('form-data');
-const QPAY_API_URL = process.env.QPAY_API_URL; 
+const QPAY_API_URL = process.env.QPAY_API_URL;
 const ResponseData = require("../utils/ResponseData");
-const PayHistory = require('../models/PayHistoryModel');
-const Product = require('../models/ProductModel');
-const VendModel = require('../models/VendModel');
 const PayHistoryModel = require('../models/PayHistoryModel');
 const Users = require('../models/UserModel');
 const { decryptWithAES } = require('../utils/AESTextEnDecrypt');
+const WarehouseModel = require('../models/WarehouseModel');
 
 const QPay = () => {
-    const _getEbarimt = async(token, payment_id) => {
+    const _getEbarimt = async (token, payment_id) => {
 
         const formData = new FormData();
         formData.append("payment_id", payment_id);
         formData.append("ebarimt_receiver_type", "CITIZEN");
         const response = await axios.post(`${QPAY_API_URL}ebarimt/create`,
             formData, {
-                headers: {
-                    ...formData.getHeaders(),
-                    "Content-Length": formData.getLengthSync(),
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': '"multipart/form-data"'
-                }
-            });
+            headers: {
+                ...formData.getHeaders(),
+                "Content-Length": formData.getLengthSync(),
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': '"multipart/form-data"'
+            }
+        });
         try {
             return { status: 200, data: response.data }
         } catch (err) {
@@ -31,7 +30,7 @@ const QPay = () => {
             return { status: 500 }
         }
     }
-    const _paymentCheck = async(token, invoice_id) => {
+    const _paymentCheck = async (token, invoice_id) => {
         try {
 
             const checkParam = {
@@ -44,10 +43,10 @@ const QPay = () => {
             }
             const response = await axios.post(`${QPAY_API_URL}payment/check`,
                 checkParam, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             if (response.status === 200) {
                 return { result: response.data, status: 200 };
             } else {
@@ -58,13 +57,13 @@ const QPay = () => {
             return { status: 500, result: err };
         }
     }
-    const _payWithToken = async(invoice, token) => {
+    const _payWithToken = async (invoice, token) => {
         const response = await axios.post(`${QPAY_API_URL}invoice`,
             invoice, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (response.status === 200) {
             //  console.log(response.data)
             return response.data;
@@ -73,7 +72,7 @@ const QPay = () => {
         }
 
     }
-    const _getAuthToken = async(username, password) => {
+    const _getAuthToken = async (username, password) => {
         const config = {
             auth: {
                 username: username || process.env.QPAY_AUTH_TOKEN_USERNAME,
@@ -99,32 +98,61 @@ const QPay = () => {
     }
 }
 
-const getEbarimt = async(req, res) => {
+const getEbarimt = async (req, res) => {
     try {
 
-        const PayHistory = await PayHistoryModel.findOne({realInvoice: req.body.invoice_id});
-        if(PayHistory!=null){
-            const vendor = await VendModel.findOne({vendorId:PayHistory.vendorId});
-            const receiver = await Users.findOne({_id:vendor.owner});
-            const { payUsername, payPassword,  payPassphrase, } = receiver;
-            const token = await QPay().getAuthToken(payUsername,decryptWithAES(payPassword,payPassphrase));
-            const paymentCheck = await QPay().paymentCheck(token, req.body.invoice_id);
+        const PayHistory = await PayHistoryModel.findById(req.body.id);
+        if (PayHistory != null) {
+            const warehouse = await WarehouseModel.findById(PayHistory.warehouseId);
+            const receiver = await Users.findOne({ _id: warehouse.owner });
+            const { payUsername, payPassword, payPassphrase, } = receiver;
+            const token = await QPay().getAuthToken(payUsername, decryptWithAES(payPassword, payPassphrase));
+            const paymentCheck = await QPay().paymentCheck(token, PayHistory.realInvoice);
             // const ebarimt = await QPay().getEbarimt(token, req.body.invoice_id);
+            // console.log(paymentCheck)
             if (paymentCheck.status === 200) {
-    
-                const payment_id = paymentCheck.result.rows[0].payment_id;
-                const ebarimt = await QPay().getEbarimt(token, payment_id);
-                if (ebarimt.status === 200) {
-                    return ResponseData.ok(res, "", { ebarimt });
-                } else {
-                    return ResponseData.error(res, "Can not get Ebarimt data", { ebarimt });
+                const invoice = await PayHistoryModel.aggregate([
+                    {
+                        $match: { _id: ObjectId(req.body.id) }
+                    },
+                    {
+                        $lookup: {
+                            from: 'users',
+                            localField: 'payer',
+                            foreignField: '_id',
+                            as: 'from'
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: 'users',
+                            localField: 'receiver',
+                            foreignField: '_id',
+                            as: 'to'
+                        }
+                    },
+                    { $unwind: "$to" },
+                    { $unwind: "$from" },
+                ]);
+                if (paymentCheck.result.count > 0) {
+                    const payment_id = paymentCheck.result.rows[0].payment_id;
+                    const ebarimt = await QPay().getEbarimt(token, payment_id);
+
+                    if (ebarimt.status === 200) {
+                        return ResponseData.ok(res, "", { ebarimt, invoice: (invoice.length > 0 ? invoice[0] : {}) });
+                    } else {
+                        return ResponseData.error(res, "Can not get Ebarimt data", { ebarimt });
+                    }
+                }
+                else {
+                    return ResponseData.error(res, "Can not get Ebarimt Result data");
                 }
             } else {
                 return ResponseData.error(res, "Can not check payment API", { paymentCheck });
             }
 
         }
-        else{
+        else {
             return ResponseData.error(res, "Can not find pay history",);
         }
     } catch (err) {
@@ -134,32 +162,31 @@ const getEbarimt = async(req, res) => {
 
 
 }
+const getInvoiceListBySelf = async (req, res) => {
+    try {
 
-const getHistoryByInvoice = async(req,res)=>{
-    const {invoice} = req.params;
-    const historyArr = await PayHistory.aggregate([
-        {
-            $match:{realInvoice:invoice}
-        },
-        {
-            $lookup:{
-                from:'products',
-                localField:'productId',
-                foreignField:'_id',
-                as:'product'
-            }
-        },
-        {
-            $unwind:'$product'
-        }
-    ]) 
-    const history = historyArr[0];
-    if(history!=null){
-        const vendor = await VendModel.findOne({vendorId:history.vendorId});
-        return ResponseData.ok(res, "", { history,vendor });
+        const historyArray = await PayHistoryModel.aggregate([
+            {
+                $match: { payer: ObjectId(req.user._id) }
+            },
+            {
+                $lookup: {
+                    from: 'warehouses',
+                    localField: 'warehouseId',
+                    foreignField: '_id',
+                    as: 'warehouse'
+                }
+            },
+            {
+                $sort: { created: -1 }
+            },
+            { $unwind: "$warehouse" }
+        ]);
+        return ResponseData.ok(res, "", { historyArray });
     }
-    else{
-        return ResponseData.error(res, `Can not find payment history with invoice "${invoice}"` );
+    catch (err) {
+        console.log(err);
+
     }
 }
-module.exports = { QPay, getEbarimt,getHistoryByInvoice }
+module.exports = { QPay, getEbarimt,  getInvoiceListBySelf }

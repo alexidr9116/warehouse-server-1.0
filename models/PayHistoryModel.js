@@ -2,57 +2,61 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 let PayHistorySchema = new Schema({
-    vendorId:{
-        type:String,
-        required:true,
+    warehouseId: {
+        type: mongoose.Types.ObjectId,
+        required: true,
+        ref:'warehouses'
     },
-    productId:{
-        type:mongoose.Types.ObjectId
+    productIds:[{type:mongoose.Types.ObjectId}],
+    products: [
+        { 
+            id:{type: mongoose.Types.ObjectId},
+            cost:{type:Number},
+            barcode:{type:String},
+            productName:{type:String},
+            mobile:{type:Number},            
+        }
+    ],
+    totalCost: {
+        type: Number,
+        default: 0,
     },
-    productName:{
-        type:String,
-        default:""
+    created: {
+        type: Number,
+        default: Date.now()
     },
-    slotIndex:{
-        type:Number,
-        default:1,
+    updated: {
+        type: Number,
+        default: Date.now()
     },
-    cost:{
-        type:Number,
-        default:0,
+    status: {
+        type: String,
+        default: "unpaid"
     },
-    created:{
-        type:Number,
-        default:Date.now()
+    receiver: {
+        type: mongoose.Types.ObjectId,
+        ref: "users",
     },
-    updated:{
-        type:Number,
-        default:Date.now()
+    payer: {
+        type: mongoose.Types.ObjectId,
+        ref: "users",
     },
-    status:{
-        type:String,
-        default:"unpaid"
+    invoice: {
+        type: String,
+        default: ""
     },
-    receiver:{
-        type:mongoose.Types.ObjectId,
-        ref:"users",
+    realInvoice: {
+        type: String,
+        default: ""
     },
-    payer:{
-        type:mongoose.Types.ObjectId,
-        ref:"users",
+    payMethods: {
+        type: String,
+        default: "manually",
     },
-    invoice:{
-        type:String,
-        default:""
-    },
-    realInvoice:{
-        type:String,
-        default:""
-    },
-    taken:{
-        type:Number,
-        default:0,
-    }
+    // mobile:{
+    //     type:Number,
+
+    // }
 });
 
 // Export the model

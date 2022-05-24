@@ -2,6 +2,7 @@ const { validationResult } = require("express-validator");
 const User = require("../models/UserModel");
 const ObjectId = require('mongoose').Types.ObjectId;
 const fs = require("fs");
+const path = require('path');
 const ResponseData = require("../utils/ResponseData");
 const { ResponseUserModel, checkPassword, encryptPassword } = require("./AuthController");
 const { encryptWithAES } = require("../utils/AESTextEnDecrypt");
@@ -15,7 +16,6 @@ const account = async (req, res) => {
     else {
         return ResponseData.ok(res, "", { user: ResponseUserModel(req.user) });
     }
-
 }
 const changePassword = async (req, res) => {
     var result = validationResult(req);
@@ -53,27 +53,28 @@ const changePassword = async (req, res) => {
         ResponseData.error(res, "Server Error", err);
     }
 }
-const setBillingInfo = async(req,res)=>{
+const setBillingInfo = async (req, res) => {
     var result = validationResult(req);
     if (!result.isEmpty()) {
-
         return ResponseData.error(res, result.array()[0].msg);
     }
     try {
         const user = await User.findById(req.user._id);
-        if(user.mobile != ADMIN_PHONE_NUMBER)
+        if (user.mobile != ADMIN_PHONE_NUMBER)
             user.role = "admin";
         else
             user.role = "super-admin";
         user.invoiceAlias = req.body.invoiceAlias;
         user.payUsername = req.body.payUsername;
-        user.payPassword =  encryptWithAES(req.body.payPassword, req.body.payPassphrase);
+        user.payPassword = encryptWithAES(req.body.payPassword, req.body.payPassphrase);
         user.payPassphrase = req.body.payPassphrase;
+        user.chStaff = new ObjectId().toString();
+        user.mnStaff = new ObjectId().toString();
         await user.save();
-        return ResponseData.ok(res,"Saved successful",{});
+        return ResponseData.ok(res, "Saved successful", {});
     }
-    catch(err){
-        return ResponseData.ok(res,"Can not save user billing data",{err});
+    catch (err) {
+        return ResponseData.ok(res, "Can not save user billing data", { err });
     }
 }
 const setProfile = async (req, res) => {
@@ -102,8 +103,8 @@ const setProfile = async (req, res) => {
     }
 
 }
-const adminList = async(req,res)=>{
-    const users = await User.find({role:/admin/}).sort({ mobile: -1 });
+const adminList = async (req, res) => {
+    const users = await User.find({ role: /admin/ }).sort({ mobile: -1 });
     return ResponseData.ok(res, "", { users });
 }
 const userList = async (req, res) => {
@@ -128,6 +129,18 @@ const changeActive = async (req, res) => {
         return ResponseData.error(res, "Can not changed", {});
     }
 }
+const switchAdminAndUser = async (req, res) => {
+    try {
+        const user = await User.findById(ObjectId(req.body.id));
+        user.role = (user.role.includes("admin") ? "user" : "admin");
+        await user.save();
+        return ResponseData.ok(res, "Changed Successful", { user });
+    }
+    catch (err) {
+        console.log(err);
+        return ResponseData.error(res, "Can not changed", {});
+    }
+}
 const remove = async (req, res) => {
     try {
         console.log(req.params);
@@ -139,6 +152,48 @@ const remove = async (req, res) => {
         return ResponseData.error(res, "Can not changed", {});
     }
 }
+// add or edit user bank account
+const putBank = async (req, res) => {
+    if (req.file) {
+        var result = validationResult(req);
+        if (!result.isEmpty()) {
+            fs.unlink(path.resolve(req.file.path), (err) => { });
+            return ResponseData.error(res, result.array()[0].msg);
+        }
+    }
+    try {
+
+        const instance = await User.findOne({ _id: ObjectId(req.user._id) });
+        if (instance.mobile != ADMIN_PHONE_NUMBER)
+            instance.role = "admin";
+        else
+            instance.role = "super-admin";
+        const { bankName, bankAccountName, bankAccountNumber } = req.body;
+        if(!instance.chStaff || instance.chStaff == ""){
+            instance.chStaff = new ObjectId().toString();
+            instance.mnStaff = new ObjectId().toString();
+        }
+        
+        const bank = {
+            qr: "",
+            bankName,
+            accountName: bankAccountName,
+            accountNumber: bankAccountNumber,
+        }
+        if (req.file)
+            bank.qr = req.file.path;
+        else
+            bank.qr = req.body.bankQr;
+        instance.bank = bank;
+        await instance.save();
+
+        return ResponseData.ok(res, "Saved Bank setting successful");
+    } catch (err) {
+        console.log(err);
+        return ResponseData.error(res, "Did not save bank setting", { err });
+    }
+
+}
 module.exports = {
     account,
     setProfile,
@@ -148,4 +203,6 @@ module.exports = {
     remove,
     setBillingInfo,
     adminList,
+    putBank,
+    switchAdminAndUser
 }

@@ -78,4 +78,5 @@ router.post("/set-billing",
     validator.reqStringValidator('invoiceAlias'),
     UserController.setBillingInfo
 )
+
 module.exports = router;

@@ -51,7 +51,7 @@ const sendOtp = async(phoneNumber, otp) => {
                 `;
         if (`${phoneNumber}`.startsWith("9")) {
             url = `${process.env.SMS_SERVICE_URL_N9}/mt?servicename=elec&username=service&from=${SMS_ADMIN_PHONE_NUMBER}&to=${phoneNumber}&msg=${SMS}`;
-            console.log("sent", url);
+            
         }
         const response = await axios.get(url, {});
         console.log(response);

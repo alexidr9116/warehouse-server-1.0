@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../../middleware/auth');
 const admin = require('../../middleware/admin');
+const staff = require('../../middleware/staff');
 const UserController = require('../../controller/UserController');
 const ProductController = require('../../controller/ProductionController');
+const ReviewController = require('../../controller/ReviewController');
 const WarehouseController = require('../../controller/WarehouseController');
 const DashboardController = require('../../controller/DashboardController');
 const { imageUpload } = require("../../utils/FileUploader");
@@ -22,7 +24,7 @@ router.put(
     [
         imageUpload.single("img"),
         validator.reqStringValidator('name'),
-        
+
     ],
     WarehouseController.put
 )
@@ -30,21 +32,46 @@ router.put(
     '/warehouse/edit',
     auth,
     admin,
-    [ 
+    [
         validator.reqStringValidator('name'),
     ],
     WarehouseController.put
 )
+
+
 router.get('/warehouse/list',
     auth,
     admin,
     WarehouseController.listByAdmin
 )
- 
-router.post('/warehouse/set-owner',
+router.post('/review/delete',auth,admin,ReviewController.deleteReview);
+router.post('/review/delete-and-block',auth,admin,ReviewController.deleteReviewAndBlock);
+router.post('/payment/confirm',auth,admin,ProductController.confirmPayment);
+router.put("/bank/edit",
     auth,
-    admin,
-    WarehouseController.setOwner
+    [
+        validator.reqStringValidator('bankName'),
+        validator.reqStringValidator('bankAccountName'),
+        validator.reqNumberValidator('bankAccountNumber'),
+    ],
+    UserController.putBank
+)
+
+router.put("/bank/add",
+    auth,
+    [
+        imageUpload.single("bankQr"),
+        validator.reqStringValidator('bankName'),
+        validator.reqStringValidator('bankAccountName'),
+        validator.reqNumberValidator('bankAccountNumber'),
+    ],
+    UserController.putBank
+)
+router.get(
+    '/staff-products/list/:warehouseId',
+    auth,
+    staff,
+    ProductController.staffList
 )
 router.get(
     '/products/list/:warehouseId',
@@ -58,12 +85,28 @@ router.get(
     admin,
     ProductController.history
 )
+router.get('/warehouse/reviews/:warehouseId',
+    auth,
+    admin,
+    ReviewController.getWarehouseReviews
+)
+router.get('/review/reported', 
+    auth, 
+    admin, 
+    ReviewController.getReportedReviews
+)
+router.post('/review/report',
+    auth,
+    admin,
+    ReviewController.reportReview
+)
 router.delete(
     '/product/delete/:id',
     auth,
     admin,
     ProductController.remove
 )
+router.post('/product/removeMany',auth,admin,ProductController.removeMany);
 router.post(
     '/product/change-location',
     auth,
@@ -83,15 +126,40 @@ router.post(
     ProductController.sendSmsNotification
 )
 router.put(
-    '/product/edit',
+    '/product/arrived-ub',
     auth,
-    admin,
+    staff,
     [
         validator.reqStringValidator('barcode'),
         validator.reqStringValidator('warehouseId'),
-        validator.reqNumberValidator('mobile'),
         validator.reqNumberValidator('price'),
+        validator.reqNumberValidator('mobile'),
+    ],
+    ProductController.arrivedUb
+)
+router.put(
+    '/product/left-china',
+    auth,
+    staff,
+    [
+        validator.reqStringValidator('barcode'),
+        validator.reqStringValidator('warehouseId'),
+        validator.reqNumberValidator('priceY'),
         validator.reqNumberValidator('weight'),
+        validator.reqNumberValidator('size'),
+    ],
+    ProductController.leftFromChina
+)
+router.put(
+    '/product/edit',
+    auth,
+    staff,
+    [
+        validator.reqStringValidator('barcode'),
+        validator.reqStringValidator('warehouseId'),
+        // validator.reqNumberValidator('mobile'),
+        // validator.reqNumberValidator('price'),
+        // validator.reqNumberValidator('weight'),
     ],
     ProductController.put
 )
@@ -107,6 +175,12 @@ router.post(
     admin,
     UserController.userList
 );
+router.post(
+    '/user/switch-admin',
+    auth,
+    admin,
+    UserController.switchAdminAndUser
+);
 
 router.post(
     '/user/change-active',
@@ -114,6 +188,7 @@ router.post(
     admin,
     UserController.changeActive
 );
+
 router.delete(
     '/user/remove/:id',
     auth,
@@ -124,7 +199,7 @@ router.delete(
 router.post(
     '/dashboard/system',
     auth,
-    DashboardController.getSystemVendorDetails
+    DashboardController.getSystemInformation
 )
 
 router.post(

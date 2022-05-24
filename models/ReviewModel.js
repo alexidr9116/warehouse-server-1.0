@@ -17,7 +17,7 @@ let ReviewSchema = new Schema({
     },
     status:{
         type:String,
-        default:'inactive',
+        default:'active',
     },
     comment:{
         type:String,
@@ -46,7 +46,16 @@ let ReviewSchema = new Schema({
     createdAt:{
         type:Number,
         default:Date.now()
-    }
+    },
+    reported:{
+        type:Boolean,
+        default:false,
+    },
+    reportContent:{
+        type:String,
+        default:""
+    },
+
 });
 
 // Export the model
